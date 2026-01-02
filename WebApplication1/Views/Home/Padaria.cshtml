@@ -1,0 +1,568 @@
+﻿@{
+    Layout = "_Layout";
+}
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        :root {
+            --bg: #f7f7f7;
+            --card: #ffffff;
+            --accent: #c04e2b;
+            --accent-dark: #a43f1f;
+            --muted: #666;
+            --success: #2d8a4a;
+        }
+
+        body {
+            margin: 0;
+            font-family: Segoe UI, Roboto, "Helvetica Neue", Arial;
+            background: var(--bg);
+            color: #222;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 24px);
+            gap: 16px;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        .pane {
+            background: var(--card);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            padding: 12px;
+            overflow: auto;
+        }
+
+        .left {
+            flex: 0 0 360px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0;
+            color: var(--accent-dark);
+        }
+
+        .controls > button {
+            margin-left: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+        }
+
+        .controls > button.secondary {
+            background: #eaeaea;
+            color: #222;
+        }
+
+        .order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.12s, opacity 0.12s;
+            outline: none;
+        }
+
+        .order-item:hover { background: #fafafa; }
+
+        .order-item.selected {
+            border: 2px solid var(--accent);
+            background: linear-gradient(90deg, rgba(192,78,43,0.04), rgba(192,78,43,0.02));
+        }
+
+        .order-item.completed {
+            opacity: 0.6;
+            background: linear-gradient(90deg, rgba(45,138,74,0.03), rgba(45,138,74,0.01));
+        }
+
+        .order-meta {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .order-meta .table {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .badges {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .badge {
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+        }
+
+        .badge.pending {
+            background: #fff4f2;
+            color: var(--accent-dark);
+            border: 1px solid rgba(192,78,43,0.12);
+        }
+
+        .badge.completed {
+            background: #f2fff4;
+            color: var(--success);
+            border: 1px solid rgba(45,138,74,0.12);
+        }
+
+        .details {
+            padding: 8px;
+        }
+
+        .items {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .item.delivered {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .item .left {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .item button {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            background: var(--accent);
+            color: white;
+        }
+
+        .item button[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #ddd;
+            color: #666;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .footer-actions {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+        }
+
+        button:focus, .order-item:focus {
+            box-shadow: 0 0 0 3px rgba(192,78,43,0.12);
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <aside class="pane left" aria-label="Lista de Pedidos">
+            <div class="header">
+                <h1>Painel de Entrega</h1>
+                <div class="controls" role="toolbar" aria-label="Controles">
+                    <button id="btnR" title="Atualizar (simula atualização)">Atualizar</button>
+                    <button id="btnSimulate" title="Simular novo pedido" class="secondary">Simular</button>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div class="muted" id="totalSummary">Pedidos</div>
+                <div class="muted" id="statusSummary">0 pendentes</div>
+            </div>
+
+            <div class="order-list" id="orderList" role="list" aria-label="Lista de pedidos">
+                <!-- Lista preenchida por JS -->
+            </div>
+        </aside>
+
+        <main class="pane right" aria-label="Detalhes do Pedido">
+            <div class="header">
+                <h2 id="detailTitle">Selecione um pedido</h2>
+                <div class="muted" id="detailTime"></div>
+            </div>
+
+            <section class="details" id="detailsSection">
+                <div class="muted" id="noSelection">Clique em um pedido à esquerda para ver detalhes e marcar itens como entregues.</div>
+
+                <div id="detailContent" style="display:none;">
+                    <div><strong>Mesa</strong>: <span id="detailTable"></span></div>
+                    <div style="margin-top:6px;" class="muted">Feito em: <span id="detailCreatedAt"></span></div>
+
+                    <div class="items" id="itemsList" role="list" aria-label="Itens do pedido">
+                        <!-- Itens do pedido -->
+                    </div>
+
+                    <div class="footer-actions">
+                        <button id="btnMarkAll" title="Marcar todos como entregues">Marcar tudo entregue</button>
+                        <button id="btnArchive" class="secondary" title="Remover pedido entregue da lista">Remover pedido</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Estado inicial com pedidos simulados
+        const orders = [
+            {
+                id: 1,
+                tableNumber: 'Mesa 4',
+                createdAt: new Date(Date.now() - 1000 * 60 * 8),
+                items: [
+                    { name: 'Pão Francês (6)', qty: 1, delivered: false },
+                    { name: 'Café com Leite', qty: 2, delivered: false }
+                ]
+            },
+            {
+                id: 2,
+                tableNumber: 'Mesa 2',
+                createdAt: new Date(Date.now() - 1000 * 60 * 3),
+                items: [
+                    { name: 'Bolo de Cenoura - fatia', qty: 1, delivered: false }
+                ]
+            },
+            {
+                id: 3,
+                tableNumber: 'Retirada Balcão',
+                createdAt: new Date(Date.now() - 1000 * 60 * 25),
+                items: [
+                    { name: 'Coxinha', qty: 3, delivered: true }
+                ]
+            }
+        ];
+
+        let selectedOrderId = null;
+        let nextId = 4;
+
+        // Utils
+        function timeAgo(date) {
+            const diff = Math.floor((Date.now() - new Date(date)) / 1000);
+            if (diff < 60) return `${diff}s`;
+            if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+            return `${Math.floor(diff / 3600)}h`;
+        }
+
+        function countPending(order) {
+            return (order.items || []).filter(i => !i.delivered).length;
+        }
+
+        function isOrderCompleted(order) {
+            return (order.items && order.items.length > 0) && order.items.every(i => i.delivered);
+        }
+
+        // Renderização
+        function renderOrderList() {
+            const listEl = document.getElementById('orderList');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+
+            // Ordena por criação (mais recente primeiro)
+            const sorted = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            sorted.forEach(order => {
+                const pending = countPending(order);
+                const completed = isOrderCompleted(order);
+
+                const item = document.createElement('div');
+                item.className = 'order-item' + (order.id === selectedOrderId ? ' selected' : '') + (completed ? ' completed' : '');
+                item.setAttribute('role', 'listitem');
+                item.tabIndex = 0;
+                item.setAttribute('aria-label', `${order.tableNumber} - ${pending} pendente(s)`);
+                item.onclick = () => selectOrder(order.id);
+                item.onkeypress = (e) => {
+                    const key = e.key || e.code;
+                    if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+                        e.preventDefault();
+                        selectOrder(order.id);
+                    }
+                };
+
+                const meta = document.createElement('div');
+                meta.className = 'order-meta';
+
+                const table = document.createElement('div');
+                table.className = 'table';
+                table.textContent = order.tableNumber;
+
+                const sub = document.createElement('div');
+                sub.className = 'muted';
+                sub.textContent = `${pending} pendente(s) • ${order.items.length} item(s) • ${timeAgo(order.createdAt)}`;
+
+                meta.appendChild(table);
+                meta.appendChild(sub);
+
+                const badges = document.createElement('div');
+                badges.className = 'badges';
+
+                if (pending > 0) {
+                    const b = document.createElement('div');
+                    b.className = 'badge pending';
+                    b.textContent = `${pending} pend.`;
+                    badges.appendChild(b);
+                } else if (completed) {
+                    const b = document.createElement('div');
+                    b.className = 'badge completed';
+                    b.textContent = 'Entregue';
+                    badges.appendChild(b);
+                }
+
+                const t = document.createElement('div');
+                t.className = 'badge';
+                t.textContent = `#${order.id}`;
+                badges.appendChild(t);
+
+                item.appendChild(meta);
+                item.appendChild(badges);
+
+                listEl.appendChild(item);
+            });
+
+            // Summary
+            const pendingTotal = orders.reduce((acc, o) => acc + countPending(o), 0);
+            document.getElementById('statusSummary').textContent = `${pendingTotal} pendente(s)`;
+            document.getElementById('totalSummary').textContent = `Pedidos: ${orders.length}`;
+        }
+
+        function renderDetail() {
+            const detailContent = document.getElementById('detailContent');
+            const noSelection = document.getElementById('noSelection');
+            const detailTitle = document.getElementById('detailTitle');
+            const detailTime = document.getElementById('detailTime');
+
+            if (selectedOrderId == null) {
+                if (detailContent) detailContent.style.display = 'none';
+                if (noSelection) noSelection.style.display = 'block';
+                if (detailTitle) detailTitle.textContent = 'Selecione um pedido';
+                if (detailTime) detailTime.textContent = '';
+                return;
+            }
+
+            const order = orders.find(o => o.id === selectedOrderId);
+            if (!order) {
+                selectedOrderId = null;
+                renderOrderList();
+                renderDetail();
+                return;
+            }
+
+            if (noSelection) noSelection.style.display = 'none';
+            if (detailContent) detailContent.style.display = 'block';
+
+            document.getElementById('detailTitle').textContent = `Pedido #${order.id}`;
+            document.getElementById('detailTime').textContent = timeAgo(order.createdAt);
+            document.getElementById('detailTable').textContent = order.tableNumber;
+            document.getElementById('detailCreatedAt').textContent = new Date(order.createdAt).toLocaleString();
+
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+
+            order.items.forEach((it, idx) => {
+                const el = document.createElement('div');
+                el.className = 'item' + (it.delivered ? ' delivered' : '');
+                el.setAttribute('role', 'listitem');
+
+                const left = document.createElement('div');
+                left.className = 'left';
+
+                const name = document.createElement('div');
+                name.innerHTML = `<strong>${escapeHtml(it.name)}</strong><div class="muted">Qtd: ${it.qty}</div>`;
+
+                left.appendChild(name);
+
+                const right = document.createElement('div');
+
+                if (!it.delivered) {
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Entregar';
+                    btn.setAttribute('aria-label', `Entregar ${it.name}`);
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        markItemDelivered(order.id, idx);
+                    };
+                    right.appendChild(btn);
+                } else {
+                    const span = document.createElement('div');
+                    span.className = 'muted';
+                    span.textContent = 'Entregue';
+                    right.appendChild(span);
+                }
+
+                el.appendChild(left);
+                el.appendChild(right);
+
+                itemsList.appendChild(el);
+            });
+
+            // Atualiza estado dos botões de ação
+            const btnMarkAll = document.getElementById('btnMarkAll');
+            const btnArchive = document.getElementById('btnArchive');
+
+            if (btnMarkAll) {
+                btnMarkAll.disabled = isOrderCompleted(order);
+                btnMarkAll.setAttribute('aria-disabled', btnMarkAll.disabled ? 'true' : 'false');
+            }
+            if (btnArchive) {
+                btnArchive.disabled = false; // pode sempre remover manualmente
+            }
+        }
+
+        // Escapa simples para evitar injeção trivial em innerHTML
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function (m) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+            });
+        }
+
+        // Ações
+        function selectOrder(id) {
+            selectedOrderId = id;
+            renderOrderList();
+            renderDetail();
+        }
+
+        function markItemDelivered(orderId, itemIndex) {
+            const o = orders.find(x => x.id === orderId);
+            if (!o || !o.items || !o.items[itemIndex]) return;
+            o.items[itemIndex].delivered = true;
+            renderOrderList();
+            renderDetail();
+        }
+
+        function markAllDelivered(orderId) {
+            const o = orders.find(x => x.id === orderId);
+            if (!o || !o.items) return;
+            o.items.forEach(it => it.delivered = true);
+            renderOrderList();
+            renderDetail();
+        }
+
+        function removeOrder(orderId) {
+            const idx = orders.findIndex(x => x.id === orderId);
+            if (idx >= 0) {
+                const confirmMsg = `Remover pedido #${orderId}? Esta ação não pode ser desfeita.`;
+                if (!confirm(confirmMsg)) return;
+                orders.splice(idx, 1);
+                if (selectedOrderId === orderId) selectedOrderId = null;
+                renderOrderList();
+                renderDetail();
+            }
+        }
+
+        function simulateIncomingOrder() {
+            const samples = [
+                ['Mesa 1', ['Pão de Queijo', 'Suco Laranja']],
+                ['Mesa 5', ['Torrada', 'Café']],
+                ['Retirada Balcão', ['Baguete', 'Água']],
+                ['Mesa 3', ['Sanduíche Natural', 'Chá Gelado']],
+            ];
+            const s = samples[Math.floor(Math.random() * samples.length)];
+            const items = s[1].map(n => ({ name: n, qty: 1, delivered: false }));
+            const newOrder = {
+                id: nextId++,
+                tableNumber: s[0],
+                createdAt: new Date(),
+                items
+            };
+            orders.push(newOrder);
+            // Auto-select o novo pedido
+            selectedOrderId = newOrder.id;
+            renderOrderList();
+            renderDetail();
+        }
+
+        // Event handlers (garantir que elementos existem)
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnSimulate = document.getElementById('btnSimulate');
+            const btnRefresh = document.getElementById('btnRefresh');
+            const btnMarkAll = document.getElementById('btnMarkAll');
+            const btnArchive = document.getElementById('btnArchive');
+
+            if (btnSimulate) btnSimulate.addEventListener('click', simulateIncomingOrder);
+            if (btnRefresh) btnRefresh.addEventListener('click', () => { renderOrderList(); renderDetail(); });
+
+            if (btnMarkAll) btnMarkAll.addEventListener('click', () => {
+                if (selectedOrderId != null) markAllDelivered(selectedOrderId);
+            });
+
+            if (btnArchive) btnArchive.addEventListener('click', () => {
+                if (selectedOrderId != null) removeOrder(selectedOrderId);
+            });
+
+            // Inicializa UI
+            renderOrderList();
+            renderDetail();
+        });
+
+        // Simula chegada de pedidos a cada 30s, mas pausa quando a aba está em background
+        const autoSimulate = true;
+        if (autoSimulate) {
+            setInterval(() => {
+                try {
+                    if (document.hidden) return; // pausa quando não visível
+                    if (orders.length < 12) simulateIncomingOrder();
+                } catch (e) {
+                    // silencioso
+                    console.error(e);
+                }
+            }, 30000);
+        }
+    </script>
+</body>
+</html>
